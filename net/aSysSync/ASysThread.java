@@ -5,6 +5,7 @@ import net.boxes.BoxMap;
 
 public class ASysThread {
 
+    private final String threadName;
     private final Thread thread;
 
     private final BoxList<Runnable> taskList = new BoxList<>();
@@ -13,13 +14,9 @@ public class ASysThread {
     private volatile boolean active = true;
 
     public ASysThread(String threadName) {
+        this.threadName = threadName;
         this.thread = this.process();
         this.thread.start();
-
-        ASysSync.threads.put(threadName, this);
-    }
-    public ASysThread(String threadName, Thread thread) {
-        this.thread = thread;
 
         ASysSync.threads.put(threadName, this);
     }
@@ -33,11 +30,11 @@ public class ASysThread {
         while (!taskList.isEmpty()) {
             thread.run(taskList.removeFirst());
         }
-        BoxList<String> loopKeys = loopList.getKeys();
-        while (!loopKeys.isEmpty()) {
-            String key = loopKeys.removeFirst();
+        BoxList<BoxMap.BoxEntry<String, Runnable>> loopEntries = loopList.getEntries();
+        while (!loopEntries.isEmpty()) {
+            BoxMap.BoxEntry<String, Runnable> entry = loopEntries.removeFirst();
 
-            thread.loop(key, loopList.remove(key));
+            thread.loop(entry.key, entry.value);
         }
 
         this.stop();
@@ -46,6 +43,7 @@ public class ASysThread {
     public synchronized void stop() {
         if (this.active) {
             this.active = false;
+            ASysSync.threads.remove(this.threadName);
         } else {
             thread.interrupt();
         }
