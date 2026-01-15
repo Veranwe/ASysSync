@@ -1,24 +1,29 @@
 package net.aSysSync;
 
-import net.boxes.BoxList;
-import net.boxes.BoxMap;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 public class ASysThread {
 
-    private final String threadName;
     private final Thread thread;
 
-    private final BoxList<Runnable> taskList = new BoxList<>();
-    private final BoxMap<String, Runnable> loopList = new BoxMap<>();
+    private final ArrayList<Runnable> taskList = new ArrayList<>();
+    private final HashMap<String, Runnable> loopList = new HashMap<>();
 
     private volatile boolean active = true;
 
     public ASysThread(String threadName) {
-        this.threadName = threadName;
         this.thread = this.process();
         this.thread.start();
 
-        ASysSync.threads.put(threadName, this);
+        ASysSync.namedThreads.put(threadName, this);
+        ASysSync.threads.add(this);
+    }
+    public ASysThread() {
+        this.thread = this.process();
+        this.thread.start();
+
+        ASysSync.threads.add(this);
     }
 
     public synchronized void run(Runnable task) { this.taskList.add(task); }
@@ -27,15 +32,8 @@ public class ASysThread {
 
     public synchronized void mergeInto(ASysThread thread) { this.mergeInto(thread, false); }
     public synchronized void mergeInto(ASysThread thread, boolean forceStop) {
-        while (!taskList.isEmpty()) {
-            thread.run(taskList.removeFirst());
-        }
-        BoxList<BoxMap.BoxEntry<String, Runnable>> loopEntries = loopList.getEntries();
-        while (!loopEntries.isEmpty()) {
-            BoxMap.BoxEntry<String, Runnable> entry = loopEntries.removeFirst();
-
-            thread.loop(entry.key, entry.value);
-        }
+        this.taskList.forEach(thread::run);
+        this.loopList.forEach(thread::loop);
 
         this.stop();
         if (forceStop) this.stop();
@@ -43,9 +41,8 @@ public class ASysThread {
     public synchronized void stop() {
         if (this.active) {
             this.active = false;
-            ASysSync.threads.remove(this.threadName);
         } else {
-            thread.interrupt();
+            this.thread.interrupt();
         }
     }
 
@@ -53,12 +50,10 @@ public class ASysThread {
         return new Thread(() -> {
             while (active) {
                 while (!taskList.isEmpty()) {
-                    taskList.removeFirst().run();
+                    this.taskList.removeFirst().run();
                 }
 
-                for (Object task : loopList.entries.objects) {
-                    ((BoxMap.BoxEntry<String, Runnable>) task).value.run();
-                }
+                this.loopList.forEach((key, value) -> value.run());
             }
         });
     }

@@ -10,22 +10,22 @@ public class Testing {
         new ASysThread("Test-2");
         new ASysThread("Test-3");
 
-        ASysSync.threads.get("Test-1").run(() -> System.out.println("Hello World!"));
-        ASysSync.threads.get("Test-2").loop("Await_Hello", () -> {
+        ASysSync.namedThreads.get("Test-1").run(() -> System.out.println("Hello World!"));
+        ASysSync.namedThreads.get("Test-2").loop("Await_Hello", () -> {
             ASysUtil.threadSleep(1000);
             System.out.println("Also Hello!");
         });
 
         ASysUtil.threadSleep(1000);
 
-        ASysSync.threads.get("Test-1").stop();
+        ASysSync.namedThreads.get("Test-1").stop();
 
         ASysUtil.threadSleep(2000);
 
-        ASysSync.threads.get("Test-2").mergeInto(ASysSync.threads.get("Test-3"));
+        ASysSync.namedThreads.get("Test-2").mergeInto(ASysSync.namedThreads.get("Test-3"));
 
         ASysUtil.threadSleep(2000);
 
-        ASysSync.threads.get("Test-3").stop();
+        ASysSync.namedThreads.get("Test-3").stop();
     }
 }
