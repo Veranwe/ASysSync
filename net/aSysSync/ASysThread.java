@@ -11,17 +11,28 @@ public class ASysThread {
     private final HashMap<String, Runnable> loopList = new HashMap<>();
 
     private volatile boolean active = true;
+    private final boolean keep;
 
     public ASysThread(String threadName) {
+        this(threadName, false);
+    }
+    public ASysThread(String threadName, boolean keep) {
         this.thread = this.process();
         this.thread.start();
+
+        this.keep = keep;
 
         ASysSync.namedThreads.put(threadName, this);
         ASysSync.threads.add(this);
     }
     public ASysThread() {
+        this(false);
+    }
+    public ASysThread(boolean keep) {
         this.thread = this.process();
         this.thread.start();
+
+        this.keep = keep;
 
         ASysSync.threads.add(this);
     }
@@ -52,9 +63,13 @@ public class ASysThread {
                 while (!taskList.isEmpty()) {
                     this.taskList.removeFirst().run();
                 }
-
                 this.loopList.forEach((key, value) -> value.run());
+                autoStop();
             }
         });
+    }
+    private void autoStop() {
+        if (keep) return;
+        if (this.taskList.isEmpty() && this.loopList.isEmpty()) this.stop();
     }
 }
