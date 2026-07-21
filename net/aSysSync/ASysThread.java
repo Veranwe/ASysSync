@@ -6,6 +6,7 @@ import java.util.HashMap;
 public class ASysThread {
 
     private final Thread thread;
+    private final String name;
 
     private final ArrayList<Runnable> taskList = new ArrayList<>();
     private final HashMap<String, Runnable> loopList = new HashMap<>();
@@ -18,7 +19,7 @@ public class ASysThread {
     }
     public ASysThread(String threadName, boolean keep) {
         this.thread = this.process();
-        this.thread.start();
+        this.name = threadName;
 
         this.keep = keep;
 
@@ -30,15 +31,21 @@ public class ASysThread {
     }
     public ASysThread(boolean keep) {
         this.thread = this.process();
-        this.thread.start();
+        this.name = "";
 
         this.keep = keep;
 
         ASysSync.threads.add(this);
     }
 
-    public synchronized void run(Runnable task) { this.taskList.add(task); }
-    public synchronized void loop(String taskName, Runnable task) { this.loopList.put(taskName, task); }
+    public synchronized void run(Runnable task) {
+        this.taskList.add(task);
+        if (this.thread.getState().equals(Thread.State.NEW)) this.thread.start();
+    }
+    public synchronized void loop(String taskName, Runnable task) {
+        this.loopList.put(taskName, task);
+        if (this.thread.getState().equals(Thread.State.NEW)) this.thread.start();
+    }
     public synchronized void stopLoop(String taskName) { this.loopList.remove(taskName); }
 
     public synchronized void mergeInto(ASysThread thread) { this.mergeInto(thread, false); }
@@ -50,6 +57,9 @@ public class ASysThread {
         if (forceStop) this.stop();
     }
     public synchronized void stop() {
+        ASysSync.threads.remove(this);
+        ASysSync.namedThreads.remove(this.name);
+
         if (this.active) {
             this.active = false;
         } else {
@@ -63,7 +73,7 @@ public class ASysThread {
                 while (!taskList.isEmpty()) {
                     this.taskList.removeFirst().run();
                 }
-                this.loopList.forEach((key, value) -> value.run());
+                this.loopList.forEach((_, value) -> value.run());
                 autoStop();
             }
         });
