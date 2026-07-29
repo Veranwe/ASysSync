@@ -42,6 +42,16 @@ public class ASysThread {
         this.taskList.add(task);
         if (this.thread.getState().equals(Thread.State.NEW)) this.thread.start();
     }
+    public synchronized void skip() {
+        if (this.thread.getState() == Thread.State.TIMED_WAITING
+                || this.thread.getState() == Thread.State.WAITING
+                || this.thread.getState() == Thread.State.BLOCKED) {
+            this.thread.interrupt();
+        }
+    }
+    public synchronized void clearTasks() {
+        this.taskList.clear();
+    }
     public synchronized void loop(String taskName, Runnable task) {
         this.loopList.put(taskName, task);
         if (this.thread.getState().equals(Thread.State.NEW)) this.thread.start();
@@ -71,7 +81,10 @@ public class ASysThread {
         return new Thread(() -> {
             while (active) {
                 while (!taskList.isEmpty()) {
-                    this.taskList.removeFirst().run();
+                    try {
+                        this.taskList.removeFirst().run();
+                    } catch (Exception _) {}
+                    Thread.interrupted();
                 }
                 this.loopList.forEach((_, value) -> value.run());
                 autoStop();
