@@ -11,6 +11,7 @@ public class ASysThread {
     private final ArrayList<Runnable> taskList = new ArrayList<>();
     private final HashMap<String, Runnable> loopList = new HashMap<>();
 
+    private volatile boolean loopRun = false;
     private volatile boolean active = true;
     private final boolean keep;
 
@@ -46,7 +47,9 @@ public class ASysThread {
         if (this.thread.getState() == Thread.State.TIMED_WAITING
                 || this.thread.getState() == Thread.State.WAITING
                 || this.thread.getState() == Thread.State.BLOCKED) {
-            this.thread.interrupt();
+            if (!this.loopRun) {
+                this.thread.interrupt();
+            }
         }
     }
     public synchronized void clearTasks() {
@@ -80,12 +83,14 @@ public class ASysThread {
     private Thread process() {
         return new Thread(() -> {
             while (active) {
+                this.loopRun = false;
                 while (!taskList.isEmpty()) {
                     try {
                         this.taskList.removeFirst().run();
                     } catch (Exception _) {}
                     Thread.interrupted();
                 }
+                this.loopRun = true;
                 this.loopList.forEach((_, value) -> value.run());
                 autoStop();
             }
